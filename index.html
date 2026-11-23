@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amigo Secreto | Organizador de Intercambios de Regalos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        festive: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            300: '#fda4af',
+                            400: '#fb7185',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            800: '#9f1239',
+                            900: '#881337',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f1f5f9;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glass-card {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+        }
+        /* Animación suave para transiciones de pasos */
+        .fade-in {
+            animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Efecto de brillo en tarjeta revelada */
+        .gift-card-shine {
+            background: linear-gradient(135deg, #e11d48 0%, #be123c 50%, #9f1239 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .gift-card-shine::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased selection:bg-festive-500 selection:text-white">
+
+    <!-- Notificación Toast Flotante (Reemplaza alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2.5 cursor-pointer" onclick="resetToHomeConfirm()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-festive-500 to-festive-700 text-white flex items-center justify-center shadow-md shadow-festive-500/20">
+                    <i data-lucide="gift" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-lg sm:text-xl text-slate-900 leading-tight">Amigo Secreto</h1>
+                    <p class="text-[11px] text-slate-500 font-medium hidden sm:block">Sorteos justos sin complicaciones</p>
+                </div>
+            </div>
+            
+            <div id="header-actions" class="flex items-center gap-2">
+                <button id="btn-new-draw" onclick="confirmResetApp()" class="hidden text-xs sm:text-sm font-medium text-slate-600 hover:text-festive-600 bg-slate-100 hover:bg-festive-50 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Nuevo Sorteo</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+        <!-- ========================================================= -->
+        <!-- VISTA 1: REVELACIÓN INDIVIDUAL (CUANDO SE ABRE UN ENLACE) -->
+        <!-- ========================================================= -->
+        <section id="view-secret-link" class="hidden fade-in max-w-lg mx-auto">
+            <div class="glass-card rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+                <!-- Banner Superior -->
+                <div class="bg-gradient-to-r from-festive-600 to-festive-800 px-6 py-8 text-center text-white relative">
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm mb-3 border border-white/20">
+                        <i data-lucide="sparkles" class="w-7 h-7 text-gold-400"></i>
+                    </div>
+                    <h2 id="link-event-name" class="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">Intercambio de Regalos</h2>
+                    <p class="text-festive-100 text-sm mt-1">¡Has sido invitado a participar en este sorteo!</p>
+                </div>
+
+                <div class="p-6 sm:p-8">
+                    <!-- Paso previo a revelar (Anti-spoiler) -->
+                    <div id="link-step-confirm" class="text-center space-y-6">
+                        <div class="bg-slate-50 rounded-2xl p-5 border border-slate-200/80">
+                            <p class="text-sm text-slate-500 uppercase tracking-wider font-semibold mb-1">Hola,</p>
+                            <p id="link-giver-name" class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900">Participante</p>
+                            <p class="text-xs text-slate-500 mt-2">Asegúrate de que nadie más esté mirando tu pantalla antes de descubrir a tu amigo secreto.</p>
+                        </div>
+
+                        <button onclick="revealSecretLinkResult()" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-festive-600 to-festive-500 hover:from-festive-700 hover:to-festive-600 text-white font-display font-bold text-lg shadow-lg shadow-festive-500/30 transform active:scale-[0.98] transition-all flex items-center justify-center gap-2.5">
+                            <i data-lucide="eye" class="w-5 h-5"></i>
+                            <span>Descubrir a quién le regalo</span>
+                        </button>
+                    </div>
+
+                    <!-- Resultado Revelado del Enlace -->
+                    <div id="link-step-revealed" class="hidden space-y-6 fade-in">
+                        <div class="gift-card-shine rounded-2xl p-6 sm:p-8 text-center text-white shadow-xl">
+                            <p class="text-festive-100 text-xs sm:text-sm font-semibold uppercase tracking-widest mb-2">Te toca darle regalo a:</p>
+                            <div class="bg-white/10 backdrop-blur-md rounded-xl py-4 px-3 border border-white/20 my-2">
+                                <p id="link-receiver-name" class="font-display font-extrabold text-3xl sm:text-4xl tracking-tight text-white drop-shadow">Nombre</p>
+                            </div>
+                            <p class="text-xs text-festive-100 mt-3 flex items-center justify-center gap-1">
+                                <i data-lucide="lock" class="w-3.5 h-3.5"></i> ¡Guarda el secreto!
+                            </p>
+                        </div>
+
+                        <!-- Detalles del evento si existen -->
+                        <div id="link-event-details-box" class="bg-slate-50 rounded-2xl p-5 border-2 border-slate-200 space-y-3.5 text-sm shadow-sm">
+                            <h3 class="font-display font-bold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2.5">
+                                <i data-lucide="info" class="w-4 h-4 text-festive-600"></i> Detalles y Reglas del Intercambio
+                            </h3>
+                            <div id="link-detail-date" class="flex items-start gap-2.5 text-slate-800 hidden">
+                                <i data-lucide="calendar" class="w-4 h-4 text-festive-600 mt-0.5 shrink-0"></i>
+                                <div><span class="font-bold text-slate-950">Fecha:</span> <span id="link-date-val" class="font-medium text-slate-800"></span></div>
+                            </div>
+                            <div id="link-detail-budget" class="flex items-start gap-2.5 text-slate-800 hidden">
+                                <i data-lucide="wallet" class="w-4 h-4 text-festive-600 mt-0.5 shrink-0"></i>
+                                <div><span class="font-bold text-slate-950">Presupuesto:</span> <span id="link-budget-val" class="font-medium text-slate-800"></span></div>
+                            </div>
+                            <div id="link-detail-notes" class="flex items-start gap-2.5 text-slate-800 hidden">
+                                <i data-lucide="file-text" class="w-4 h-4 text-festive-600 mt-0.5 shrink-0"></i>
+                                <div><span class="font-bold text-slate-950">Notas / Reglas:</span> <p id="link-notes-val" class="mt-1 whitespace-pre-line font-medium text-slate-800 leading-relaxed bg-white p-3 rounded-xl border border-slate-200"></p></div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 text-center">
+                            <button onclick="startOwnDrawFromLink()" class="text-sm font-semibold text-festive-600 hover:text-festive-700 inline-flex items-center gap-1.5 py-2 px-4 rounded-xl hover:bg-festive-50 transition-colors">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                                <span>Organizar mi propio sorteo</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- VISTA 2: CONFIGURACIÓN DEL SORTEO (ORGANIZADOR)           -->
+        <!-- ========================================================= -->
+        <section id="view-setup" class="space-y-6 fade-in">
+            
+            <!-- Banner Introductorio -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+                <div class="relative z-10 max-w-2xl">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-gold-400 text-xs font-semibold mb-3 border border-slate-700">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> 100% Privado y sin registros
+                    </span>
+                    <h2 class="font-display font-extrabold text-2xl sm:text-3xl tracking-tight text-white mb-2">Organiza tu Intercambio de Regalos</h2>
+                    <p class="text-slate-200 text-sm sm:text-base leading-relaxed">Agrega a los participantes, configura quién no puede regalar a quién y realiza el sorteo al instante para compartirlo en persona o por WhatsApp.</p>
+                </div>
+                <i data-lucide="gift" class="w-36 h-36 text-white/5 absolute -right-4 -bottom-6 rotate-12 pointer-events-none"></i>
+            </div>
+
+            <!-- Paso 1: Participantes -->
+            <div class="glass-card rounded-3xl p-5 sm:p-7 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-full bg-festive-100 text-festive-700 font-display font-bold flex items-center justify-center text-sm">1</span>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-slate-900">Participantes</h3>
+                            <p class="text-xs text-slate-500">Mínimo 3 personas para realizar el sorteo</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openBulkModal()" class="text-xs font-semibold text-slate-600 hover:text-festive-600 bg-slate-100 hover:bg-festive-50 px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                            <i data-lucide="list-plus" class="w-4 h-4"></i>
+                            <span>Pegar lista</span>
+                        </button>
+                        <span id="participant-counter" class="px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold">
+                            0 personas
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Formulario Agregar Uno -->
+                <form onsubmit="handleAddParticipant(event)" class="flex gap-2 mb-5">
+                    <div class="relative flex-grow">
+                        <input type="text" id="input-participant-name" placeholder="Escribe un nombre (ej. Sofía, Carlos...)" autocomplete="off"
+                            class="w-full pl-4 pr-4 py-3 rounded-xl border border-slate-300 focus:border-festive-500 focus:ring-2 focus:ring-festive-500/20 outline-none text-sm sm:text-base transition-all bg-white">
+                    </div>
+                    <button type="submit" class="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base transition-colors flex items-center gap-2 shrink-0 shadow-sm">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        <span>Agregar</span>
+                    </button>
+                </form>
+
+                <!-- Lista de Participantes -->
+                <div id="participants-empty" class="text-center py-8 px-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="users" class="w-6 h-6"></i>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Aún no hay participantes en la lista</p>
+                    <p class="text-xs text-slate-400 mt-1">Agrega nombres arriba o pega una lista completa de WhatsApp</p>
+                </div>
+
+                <ul id="participants-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></ul>
+            </div>
+
+            <!-- Paso 2: Reglas y Exclusiones (Opcional) -->
+            <div class="glass-card rounded-3xl p-5 sm:p-7 shadow-sm">
+                <div class="flex items-center justify-between cursor-pointer" onclick="toggleSection('exclusions-content', 'exclusions-chevron')">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-display font-bold flex items-center justify-center text-sm">2</span>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
+                                Restricciones y Exclusiones
+                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">Opcional</span>
+                            </h3>
+                            <p class="text-xs text-slate-500">Evita que parejas o ciertas personas se toquen entre sí</p>
+                        </div>
+                    </div>
+                    <button type="button" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+                        <i id="exclusions-chevron" data-lucide="chevron-down" class="w-5 h-5 transition-transform duration-200"></i>
+                    </button>
+                </div>
+
+                <div id="exclusions-content" class="hidden mt-5 pt-5 border-t border-slate-100 space-y-4">
+                    <div id="exclusions-disabled-msg" class="text-sm text-amber-700 bg-amber-50 p-3.5 rounded-xl border border-amber-200/70 flex items-center gap-2.5">
+                        <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                        <span>Agrega al menos 3 participantes para configurar exclusiones.</span>
+                    </div>
+
+                    <div id="exclusions-controls" class="hidden space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                            <div class="sm:col-span-4">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Persona A</label>
+                                <select id="excl-person-a" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:border-festive-500"></select>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Regla</label>
+                                <select id="excl-type" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:border-festive-500">
+                                    <option value="mutual">No se tocan (↔)</option>
+                                    <option value="oneway">No regala a (→)</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Persona B</label>
+                                <select id="excl-person-b" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-sm outline-none focus:border-festive-500"></select>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <button type="button" onclick="addExclusion()" class="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-1">
+                                    <i data-lucide="ban" class="w-4 h-4"></i>
+                                    <span>Evitar</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="exclusions-list" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 3: Detalles del Evento (Opcional) -->
+            <div class="glass-card rounded-3xl p-5 sm:p-7">
+                <div class="flex items-center justify-between cursor-pointer" onclick="toggleSection('details-content', 'details-chevron')">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-display font-bold flex items-center justify-center text-sm">3</span>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
+                                Detalles y Reglas del Evento
+                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">Opcional</span>
+                            </h3>
+                            <p class="text-xs text-slate-600">Nombre, fecha, presupuesto y reglas visibles al revelar</p>
+                        </div>
+                    </div>
+                    <button type="button" class="p-2 text-slate-500 hover:text-slate-800 rounded-lg">
+                        <i id="details-chevron" data-lucide="chevron-down" class="w-5 h-5 transition-transform duration-200"></i>
+                    </button>
+                </div>
+
+                <div id="details-content" class="hidden mt-5 pt-5 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-4 rounded-2xl">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-800 mb-1.5">Nombre del Intercambio</label>
+                        <input type="text" id="event-name" placeholder="Ej. Intercambio Navideño Oficina 2026"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-festive-500 focus:ring-2 focus:ring-festive-500/20 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1.5">Fecha de entrega</label>
+                        <input type="text" id="event-date" placeholder="Ej. Viernes 18 de Diciembre, 7:00 PM"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-festive-500 focus:ring-2 focus:ring-festive-500/20 outline-none text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-800 mb-1.5">Presupuesto sugerido</label>
+                        <input type="text" id="event-budget" placeholder="Ej. $300 - $500 MXN"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-festive-500 focus:ring-2 focus:ring-festive-500/20 outline-none text-sm font-medium">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-800 mb-1.5">Notas o reglas adicionales</label>
+                        <textarea id="event-notes" rows="3" placeholder="Ej. No se vale regalar tazas ni calcetines. ¡Sean creativos!"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-festive-500 focus:ring-2 focus:ring-festive-500/20 outline-none text-sm font-medium resize-none"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerta de Error de Sorteo -->
+            <div id="draw-error-box" class="hidden bg-red-50 border border-red-200 rounded-2xl p-4 text-red-800 flex items-start gap-3 fade-in">
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600 shrink-0 mt-0.5"></i>
+                <div class="text-sm">
+                    <p class="font-bold">No se pudo realizar el sorteo</p>
+                    <p id="draw-error-text" class="mt-0.5 text-red-700">Las restricciones actuales hacen matemáticamente imposible asignar un regalo a cada persona. Intenta quitar alguna exclusión o agregar más participantes.</p>
+                </div>
+            </div>
+
+            <!-- Botón Principal de Sorteo -->
+            <div class="pt-2">
+                <button id="btn-execute-draw" onclick="executeDraw()" class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-festive-600 to-festive-500 hover:from-festive-700 hover:to-festive-600 text-white font-display font-extrabold text-lg shadow-xl shadow-festive-500/25 transform active:scale-[0.99] transition-all flex items-center justify-center gap-3">
+                    <i data-lucide="shuffle" class="w-6 h-6"></i>
+                    <span>¡Realizar Sorteo Ahora!</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- VISTA 3: RESULTADOS Y MODOS DE ENTREGA                    -->
+        <!-- ========================================================= -->
+        <section id="view-results" class="hidden space-y-6 fade-in">
+            
+            <!-- Encabezado de Éxito -->
+            <div class="glass-card rounded-3xl p-6 sm:p-8 text-center shadow-sm border-emerald-200/80 bg-gradient-to-b from-emerald-50/60 to-white">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+                </div>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900">¡Sorteo Listo!</h2>
+                <p id="results-subtitle" class="text-slate-600 text-sm sm:text-base mt-1 max-w-lg mx-auto">
+                    Cada participante ha sido asignado de forma justa y secreta. Elige cómo quieres revelar los resultados:
+                </p>
+
+                <!-- Selector de Modo (Tabs) -->
+                <div class="inline-flex p-1.5 bg-slate-100 rounded-2xl mt-6 border border-slate-200/80 w-full sm:w-auto">
+                    <button id="tab-mode-whatsapp" onclick="switchResultMode('whatsapp')" class="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white text-slate-900 shadow-sm">
+                        <i data-lucide="share-2" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Enviar por WhatsApp / Enlace</span>
+                    </button>
+                    <button id="tab-mode-inperson" onclick="switchResultMode('inperson')" class="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-festive-600"></i>
+                        <span>Modo Presencial (Este dispositivo)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- MODO A: COMPARTIR POR WHATSAPP / ENLACE ÚNICO -->
+            <div id="panel-mode-whatsapp" class="glass-card rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <h3 class="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
+                            <i data-lucide="send" class="w-5 h-5 text-emerald-600"></i>
+                            Enlaces Secretos Individuales
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Envía a cada persona su enlace privado. Nadie (ni siquiera tú) verá a quién le tocó a menos que abra el enlace.</p>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200/60 shrink-0">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i> Sin spoilers para ti
+                    </span>
+                </div>
+
+                <div id="whatsapp-links-list" class="grid grid-cols-1 gap-3"></div>
+            </div>
+
+            <!-- MODO B: PRESENCIAL (UN SOLO DISPOSITIVO) -->
+            <div id="panel-mode-inperson" class="hidden glass-card rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 fade-in">
+                <div class="border-b border-slate-100 pb-4">
+                    <h3 class="font-display font-bold text-lg text-slate-900 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-festive-600"></i>
+                        Pasar el Dispositivo
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Toca tu nombre para ver en privado a quién le das regalo, y luego ocúltalo antes de pasar el teléfono.</p>
+                </div>
+
+                <div id="inperson-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+            </div>
+
+            <!-- Botón Volver a Editar -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                <button onclick="backToSetup()" class="text-sm font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Modificar participantes o reglas</span>
+                </button>
+
+                <button onclick="reRollDraw()" class="text-sm font-semibold text-festive-600 hover:text-festive-700 bg-festive-50 hover:bg-festive-100 px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Volver a sortear</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200/80 bg-white/60 py-6 mt-12">
+        <div class="max-w-4xl mx-auto px-4 text-center text-xs text-slate-500">
+            <p>Organizador de Amigo Secreto • Todos los sorteos se procesan localmente en tu navegador.</p>
+        </div>
+    </footer>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 1: PEGAR LISTA MASIVA DE PARTICIPANTES              -->
+    <!-- ========================================================= -->
+    <div id="modal-bulk" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-display font-bold text-lg text-slate-900">Pegar lista de nombres</h3>
+                <button onclick="closeBulkModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">Escribe o pega un nombre por línea (o separados por comas). Se ignorarán duplicados y líneas vacías.</p>
+            <textarea id="bulk-textarea" rows="6" placeholder="Ana García&#10;Luis Pérez&#10;Mariana López&#10;Carlos Ruiz"
+                class="w-full p-3.5 rounded-2xl border border-slate-300 focus:border-festive-500 focus:ring-2 focus:ring-festive-500/20 outline-none text-sm mb-4"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeBulkModal()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancelar</button>
+                <button onclick="processBulkParticipants()" class="px-5 py-2.5 rounded-xl text-sm font-semibold bg-festive-600 hover:bg-festive-700 text-white shadow-md shadow-festive-500/20">Agregar todos</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 2: REVELACIÓN PRESENCIAL (ANTI-SPOILER)             -->
+    <!-- ========================================================= -->
+    <div id="modal-inperson" class="fixed inset-0 z-50 hidden bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl fade-in">
+            
+            <!-- Estado 1: Confirmación de identidad -->
+            <div id="inperson-confirm-step" class="p-6 sm:p-8 text-center space-y-6">
+                <div class="w-16 h-16 rounded-2xl bg-festive-100 text-festive-600 flex items-center justify-center mx-auto">
+                    <i data-lucide="user-check" class="w-8 h-8"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Turno de</p>
+                    <h3 id="inperson-giver-title" class="font-display font-extrabold text-2xl sm:text-3xl text-slate-900 mt-1">Nombre</h3>
+                    <p class="text-sm text-slate-500 mt-2">¿Eres tú? Asegúrate de que nadie más esté viendo la pantalla.</p>
+                </div>
+                <div class="space-y-2.5 pt-2">
+                    <button onclick="confirmInPersonReveal()" class="w-full py-3.5 px-5 rounded-2xl bg-festive-600 hover:bg-festive-700 text-white font-display font-bold text-base shadow-lg shadow-festive-500/25 flex items-center justify-center gap-2">
+                        <i data-lucide="eye" class="w-5 h-5"></i>
+                        <span>Sí, mostrar mi amigo secreto</span>
+                    </button>
+                    <button onclick="closeInPersonModal()" class="w-full py-3 px-5 rounded-2xl text-slate-500 hover:bg-slate-100 font-semibold text-sm">
+                        Cancelar (No soy yo)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estado 2: Resultado Revelado -->
+            <div id="inperson-revealed-step" class="hidden p-6 sm:p-8 text-center space-y-6 fade-in">
+                <div class="gift-card-shine rounded-2xl p-6 text-white shadow-lg">
+                    <p class="text-festive-100 text-xs font-semibold uppercase tracking-widest mb-1">Te toca regalarle a:</p>
+                    <p id="inperson-receiver-title" class="font-display font-extrabold text-3xl sm:text-4xl py-2">Destinatario</p>
+                </div>
+
+                <!-- Detalles compactos del evento si existen -->
+                <div id="inperson-event-info" class="hidden bg-slate-50 rounded-2xl p-4 text-left text-xs text-slate-800 space-y-2 border-2 border-slate-200 shadow-sm"></div>
+
+                <button onclick="finishInPersonTurn()" class="w-full py-4 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-base shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="eye-off" class="w-5 h-5"></i>
+                    <span>¡Entendido! Ocultar y pasar</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL 3: CONFIRMACIÓN GENÉRICA (REEMPLAZA confirm())      -->
+    <!-- ========================================================= -->
+    <div id="modal-confirm" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl fade-in text-center space-y-4">
+            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+                <i data-lucide="help-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 id="confirm-modal-title" class="font-display font-bold text-lg text-slate-900">¿Estás seguro?</h3>
+                <p id="confirm-modal-desc" class="text-sm text-slate-500 mt-1">Esta acción borrará el sorteo actual.</p>
+            </div>
+            <div class="flex gap-2.5 pt-2">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm">Cancelar</button>
+                <button id="confirm-modal-btn" class="flex-1 py-2.5 px-4 rounded-xl bg-festive-600 hover:bg-festive-700 text-white font-semibold text-sm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- LÓGICA DE LA APLICACIÓN                                   -->
+    <!-- ========================================================= -->
+    <script>
+        // --- ESTADO GLOBAL DE LA APLICACIÓN ---
+        let state = {
+            participants: [], // Array de objetos: { id: string, name: string }
+            exclusions: [],   // Array de objetos: { id: string, fromId: string, toId: string, mutual: boolean }
+            eventDetails: {
+                name: '',
+                date: '',
+                budget: '',
+                notes: ''
+            },
+            assignments: null, // Mapa/Objeto: { [giverId]: receiverId }
+            revealedInPerson: new Set(), // IDs de participantes que ya vieron su resultado en modo presencial
+            sentLinks: new Set(),        // IDs de participantes cuyo enlace ya fue copiado/enviado
+            activeInPersonId: null
+        };
+
+        // --- INICIALIZACIÓN ---
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            checkUrlForSecretLink();
+            
+            // Escuchar cambios en el hash por si el usuario navega
+            window.addEventListener('hashchange', checkUrlForSecretLink);
+        });
+
+        // --- UTILIDADES UI (TOASTS Y MODALES) ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const styles = {
+                success: 'bg-emerald-900 text-white border-emerald-700',
+                error: 'bg-red-900 text-white border-red-700',
+                info: 'bg-slate-900 text-white border-slate-700'
+            };
+            const icons = {
+                success: 'check-circle',
+                error: 'alert-circle',
+                info: 'info'
+            };
+
+            toast.className = `${styles[type] || styles.info} pointer-events-auto border px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium fade-in`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+                <span>${escapeHtml(message)}</span>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substring(2, 9);
+        }
+
+        function toggleSection(contentId, chevronId) {
+            const content = document.getElementById(contentId);
+            const chevron = document.getElementById(chevronId);
+            content.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 80,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#f43f5e', '#fbbf24', '#10b981', '#3b82f6']
+                });
+            }
+        }
+
+        // --- GESTIÓN DE PARTICIPANTES ---
+        function handleAddParticipant(e) {
+            e.preventDefault();
+            const input = document.getElementById('input-participant-name');
+            const name = input.value.trim();
+            
+            if (!name) return;
+
+            if (addParticipantByName(name)) {
+                input.value = '';
+                input.focus();
+                renderParticipants();
+                updateExclusionsUI();
+            }
+        }
+
+        function addParticipantByName(rawName) {
+            const name = rawName.trim().replace(/\s+/g, ' ');
+            if (!name) return false;
+
+            const exists = state.participants.some(p => p.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showToast(`"${name}" ya está en la lista.`, 'error');
+                return false;
+            }
+
+            state.participants.push({ id: generateId(), name });
+            return true;
+        }
+
+        function removeParticipant(id) {
+            state.participants = state.participants.filter(p => p.id !== id);
+            // Limpiar exclusiones asociadas a este participante
+            state.exclusions = state.exclusions.filter(ex => ex.fromId !== id && ex.toId !== id);
+            renderParticipants();
+            updateExclusionsUI();
+        }
+
+        function editParticipant(id) {
+            const participant = state.participants.find(p => p.id === id);
+            if (!participant) return;
+
+            const itemEl = document.getElementById(`participant-item-${id}`);
+            itemEl.innerHTML = `
+                <div class="flex items-center gap-2 w-full">
+                    <input type="text" id="edit-input-${id}" value="${escapeHtml(participant.name)}" 
+                        class="flex-grow px-2.5 py-1 text-sm border border-festive-400 rounded-lg outline-none focus:ring-2 focus:ring-festive-500/20"
+                        onkeydown="if(event.key==='Enter') saveEditParticipant('${id}'); if(event.key==='Escape') renderParticipants();">
+                    <button onclick="saveEditParticipant('${id}')" class="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Guardar">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="renderParticipants()" class="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg" title="Cancelar">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+            const input = document.getElementById(`edit-input-${id}`);
+            input.focus();
+            input.select();
+        }
+
+        function saveEditParticipant(id) {
+            const input = document.getElementById(`edit-input-${id}`);
+            if (!input) return;
+            const newName = input.value.trim().replace(/\s+/g, ' ');
+            
+            if (!newName) {
+                showToast('El nombre no puede estar vacío.', 'error');
+                return;
+            }
+
+            const duplicate = state.participants.some(p => p.id !== id && p.name.toLowerCase() === newName.toLowerCase());
+            if (duplicate) {
+                showToast('Ya existe otro participante con ese nombre.', 'error');
+                return;
+            }
+
+            const participant = state.participants.find(p => p.id === id);
+            if (participant) participant.name = newName;
+
+            renderParticipants();
+            updateExclusionsUI();
+        }
+
+        function renderParticipants() {
+            const list = document.getElementById('participants-list');
+            const emptyState = document.getElementById('participants-empty');
+            const counter = document.getElementById('participant-counter');
+
+            const count = state.participants.length;
+            counter.textContent = `${count} ${count === 1 ? 'persona' : 'personas'}`;
+            counter.className = count >= 3 
+                ? 'px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold transition-colors'
+                : 'px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold transition-colors';
+
+            if (count === 0) {
+                emptyState.classList.remove('hidden');
+                list.innerHTML = '';
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            list.innerHTML = state.participants.map((p, index) => `
+                <li id="participant-item-${p.id}" class="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 shadow-2xs transition-all group">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center shrink-0">
+                            ${index + 1}
+                        </span>
+                        <span class="font-medium text-sm text-slate-800 truncate">${escapeHtml(p.name)}</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="editParticipant('${p.id}')" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Editar nombre">
+                            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="removeParticipant('${p.id}')" class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </li>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        // --- MODAL DE PEGAR LISTA MASIVA ---
+        function openBulkModal() {
+            document.getElementById('modal-bulk').classList.remove('hidden');
+            document.getElementById('bulk-textarea').focus();
+        }
+
+        function closeBulkModal() {
+            document.getElementById('modal-bulk').classList.add('hidden');
+            document.getElementById('bulk-textarea').value = '';
+        }
+
+        function processBulkParticipants() {
+            const text = document.getElementById('bulk-textarea').value;
+            if (!text.trim()) {
+                closeBulkModal();
+                return;
+            }
+
+            // Separar por saltos de línea o comas, limpiar viñetas o números iniciales comunes
+            const rawLines = text.split(/[\n,]+/);
+            let addedCount = 0;
+
+            rawLines.forEach(line => {
+                // Quitar viñetas como "- ", "* ", "1. "
+                const cleaned = line.replace(/^[\s\-*•\d.)]+/, '').trim();
+                if (cleaned) {
+                    const exists = state.participants.some(p => p.name.toLowerCase() === cleaned.toLowerCase());
+                    if (!exists) {
+                        state.participants.push({ id: generateId(), name: cleaned });
+                        addedCount++;
+                    }
+                }
+            });
+
+            closeBulkModal();
+            renderParticipants();
+            updateExclusionsUI();
+
+            if (addedCount > 0) {
+                showToast(`Se agregaron ${addedCount} participantes nuevos.`, 'success');
+            } else {
+                showToast('No se agregaron nombres nuevos (posibles duplicados).', 'info');
+            }
+        }
+
+        // --- GESTIÓN DE EXCLUSIONES ---
+        function updateExclusionsUI() {
+            const disabledMsg = document.getElementById('exclusions-disabled-msg');
+            const controls = document.getElementById('exclusions-controls');
+            const selectA = document.getElementById('excl-person-a');
+            const selectB = document.getElementById('excl-person-b');
+
+            if (state.participants.length < 3) {
+                disabledMsg.classList.remove('hidden');
+                controls.classList.add('hidden');
+                return;
+            }
+
+            disabledMsg.classList.add('hidden');
+            controls.classList.remove('hidden');
+
+            const optionsHtml = state.participants.map(p => 
+                `<option value="${p.id}">${escapeHtml(p.name)}</option>`
+            ).join('');
+
+            const prevA = selectA.value;
+            const prevB = selectB.value;
+
+            selectA.innerHTML = optionsHtml;
+            selectB.innerHTML = optionsHtml;
+
+            if (state.participants.some(p => p.id === prevA)) selectA.value = prevA;
+            if (state.participants.some(p => p.id === prevB)) {
+                selectB.value = prevB;
+            } else if (state.participants.length > 1) {
+                selectB.selectedIndex = 1;
+            }
+
+            renderExclusionsList();
+        }
+
+        function addExclusion() {
+            const fromId = document.getElementById('excl-person-a').value;
+            const toId = document.getElementById('excl-person-b').value;
+            const type = document.getElementById('excl-type').value;
+            const mutual = type === 'mutual';
+
+            if (fromId === toId) {
+                showToast('Por regla general, nadie puede tocarse a sí mismo.', 'info');
+                return;
+            }
+
+            // Verificar si ya existe una regla equivalente
+            const duplicate = state.exclusions.some(ex => 
+                (ex.fromId === fromId && ex.toId === toId) ||
+                (ex.mutual && ex.fromId === toId && ex.toId === fromId) ||
+                (mutual && ex.fromId === toId && ex.toId === fromId)
+            );
+
+            if (duplicate) {
+                showToast('Esa restricción ya está agregada.', 'info');
+                return;
+            }
+
+            state.exclusions.push({
+                id: generateId(),
+                fromId,
+                toId,
+                mutual
+            });
+
+            renderExclusionsList();
+            showToast('Restricción agregada.', 'success');
+        }
+
+        function removeExclusion(id) {
+            state.exclusions = state.exclusions.filter(ex => ex.id !== id);
+            renderExclusionsList();
+        }
+
+        function renderExclusionsList() {
+            const container = document.getElementById('exclusions-list');
+            if (state.exclusions.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">No hay restricciones configuradas.</p>`;
+                return;
+            }
+
+            container.innerHTML = state.exclusions.map(ex => {
+                const personA = state.participants.find(p => p.id === ex.fromId);
+                const personB = state.participants.find(p => p.id === ex.toId);
+                if (!personA || !personB) return '';
+
+                const symbol = ex.mutual ? '↔' : '→';
+                const label = ex.mutual ? 'no se tocan' : 'no regala a';
+
+                return `
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
+                        <span class="font-bold">${escapeHtml(personA.name)}</span>
+                        <span class="text-amber-600 font-bold">${symbol}</span>
+                        <span class="font-bold">${escapeHtml(personB.name)}</span>
+                        <span class="text-amber-700/70 text-[11px]">(${label})</span>
+                        <button onclick="removeExclusion('${ex.id}')" class="ml-1 text-amber-600 hover:text-red-600 p-0.5 rounded">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // --- ALGORITMO DE SORTEO JUSTO (BACKTRACKING CON HEURÍSTICA MRV) ---
+        function computeSecretSanta(participants, exclusions) {
+            const n = participants.length;
+            if (n < 3) return null;
+
+            // Construir mapa de prohibiciones: forbidden[giverId] = Set(receiverIds)
+            const forbidden = {};
+            participants.forEach(p => {
+                forbidden[p.id] = new Set([p.id]); // Nadie se regala a sí mismo
+            });
+
+            exclusions.forEach(ex => {
+                if (forbidden[ex.fromId]) forbidden[ex.fromId].add(ex.toId);
+                if (ex.mutual && forbidden[ex.toId]) forbidden[ex.toId].add(ex.fromId);
+            });
+
+            // Verificar de inmediato si alguien no tiene a nadie a quién regalar
+            for (const p of participants) {
+                if (forbidden[p.id].size >= n) return null;
+            }
+
+            // Ordenar participantes por menor cantidad de opciones válidas (Minimum Remaining Values)
+            // Esto hace que el backtracking encuentre solución o detecte imposibilidad en microsegundos
+            const orderedGivers = [...participants].sort((a, b) => {
+                return forbidden[b.id].size - forbidden[a.id].size;
+            });
+
+            const assignment = {};
+            const usedReceivers = new Set();
+
+            // Función auxiliar para mezclar array (Fisher-Yates)
+            function shuffle(array) {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            function backtrack(index) {
+                if (index === n) {
+                    return true; // Todos asignados con éxito
+                }
+
+                const giver = orderedGivers[index];
+                // Obtener candidatos válidos y mezclarlos aleatoriamente para garantizar azar real
+                const candidates = shuffle(
+                    participants.filter(p => !forbidden[giver.id].has(p.id) && !usedReceivers.has(p.id))
+                );
+
+                for (const receiver of candidates) {
+                    assignment[giver.id] = receiver.id;
+                    usedReceivers.add(receiver.id);
+
+                    if (backtrack(index + 1)) {
+                        return true;
+                    }
+
+                    // Retroceder (Backtrack)
+                    delete assignment[giver.id];
+                    usedReceivers.delete(receiver.id);
+                }
+
+                return false;
+            }
+
+            const success = backtrack(0);
+            return success ? assignment : null;
+        }
+
+        function executeDraw() {
+            const errorBox = document.getElementById('draw-error-box');
+            errorBox.classList.add('hidden');
+
+            if (state.participants.length < 3) {
+                showToast('Necesitas al menos 3 participantes para hacer el sorteo.', 'error');
+                document.getElementById('input-participant-name').focus();
+                return;
+            }
+
+            // Guardar detalles del evento
+            state.eventDetails = {
+                name: document.getElementById('event-name').value.trim(),
+                date: document.getElementById('event-date').value.trim(),
+                budget: document.getElementById('event-budget').value.trim(),
+                notes: document.getElementById('event-notes').value.trim()
+            };
+
+            const result = computeSecretSanta(state.participants, state.exclusions);
+
+            if (!result) {
+                errorBox.classList.remove('hidden');
+                errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast('No hay combinación válida con esas restricciones.', 'error');
+                return;
+            }
+
+            state.assignments = result;
+            state.revealedInPerson.clear();
+            state.sentLinks.clear();
+
+            showResultsView();
+            triggerConfetti();
+        }
+
+        function reRollDraw() {
+            openConfirmModal(
+                '¿Volver a sortear?',
+                'Se generarán nuevas parejas aleatorias y los enlaces anteriores dejarán de coincidir con el nuevo sorteo.',
+                () => {
+                    executeDraw();
+                    showToast('¡Nuevo sorteo realizado con éxito!', 'success');
+                }
+            );
+        }
+
+        // --- VISTA DE RESULTADOS Y MODOS ---
+        function showResultsView() {
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-secret-link').classList.add('hidden');
+            document.getElementById('view-results').classList.remove('hidden');
+            document.getElementById('btn-new-draw').classList.remove('hidden');
+
+            const eventTitle = state.eventDetails.name || 'Intercambio de Regalos';
+            document.getElementById('results-subtitle').innerHTML = `
+                Sorteo para <strong class="text-slate-900">${escapeHtml(eventTitle)}</strong> (${state.participants.length} participantes). Elige cómo compartirlo:
+            `;
+
+            renderWhatsAppLinks();
+            renderInPersonGrid();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function backToSetup() {
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-setup').classList.remove('hidden');
+        }
+
+        function switchResultMode(mode) {
+            const tabWa = document.getElementById('tab-mode-whatsapp');
+            const tabIp = document.getElementById('tab-mode-inperson');
+            const panelWa = document.getElementById('panel-mode-whatsapp');
+            const panelIp = document.getElementById('panel-mode-inperson');
+
+            if (mode === 'whatsapp') {
+                tabWa.className = 'flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white text-slate-900 shadow-sm';
+                tabIp.className = 'flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900';
+                panelWa.classList.remove('hidden');
+                panelIp.classList.add('hidden');
+            } else {
+                tabIp.className = 'flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 bg-white text-slate-900 shadow-sm';
+                tabWa.className = 'flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900';
+                panelIp.classList.remove('hidden');
+                panelWa.classList.add('hidden');
+            }
+        }
+
+        // --- CODIFICACIÓN DE ENLACE SECRETO (BASE64 UTF-8 EN URL HASH) ---
+        function encodeSecretPayload(giverName, receiverName) {
+            const payload = {
+                g: giverName,
+                r: receiverName,
+                e: state.eventDetails.name || '',
+                d: state.eventDetails.date || '',
+                b: state.eventDetails.budget || '',
+                n: state.eventDetails.notes || ''
+            };
+            const jsonStr = JSON.stringify(payload);
+            // Codificación segura UTF-8 a Base64 URL-safe
+            const bytes = new TextEncoder().encode(jsonStr);
+            let binString = '';
+            bytes.forEach(byte => { binString += String.fromCharCode(byte); });
+            return btoa(binString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function decodeSecretPayload(encoded) {
+            try {
+                let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                while (base64.length % 4) base64 += '=';
+                const binString = atob(base64);
+                const bytes = Uint8Array.from(binString, char => char.charCodeAt(0));
+                const jsonStr = new TextDecoder().decode(bytes);
+                return JSON.parse(jsonStr);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function buildSecretUrl(giverId) {
+            const giver = state.participants.find(p => p.id === giverId);
+            const receiverId = state.assignments[giverId];
+            const receiver = state.participants.find(p => p.id === receiverId);
+            
+            const token = encodeSecretPayload(giver.name, receiver.name);
+            const baseUrl = window.location.href.split('#')[0];
+            return `${baseUrl}#secreto=${token}`;
+        }
+
+        // --- RENDERIZADO MODO WHATSAPP / ENLACE ---
+        function renderWhatsAppLinks() {
+            const container = document.getElementById('whatsapp-links-list');
+            
+            container.innerHTML = state.participants.map(p => {
+                const isSent = state.sentLinks.has(p.id);
+                return `
+                    <div id="wa-row-${p.id}" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border ${isSent ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200'} transition-all">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl ${isSent ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'} font-display font-bold text-sm flex items-center justify-center shrink-0">
+                                ${escapeHtml(p.name.charAt(0).toUpperCase())}
+                            </div>
+                            <div>
+                                <p class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                                    ${escapeHtml(p.name)}
+                                    ${isSent ? '<span class="text-[11px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">Enviado</span>' : ''}
+                                </p>
+                                <p class="text-xs text-slate-400">Enlace privado listo para compartir</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 self-end sm:self-center w-full sm:w-auto">
+                            <button onclick="copyParticipantLink('${p.id}')" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                <span>Copiar enlace</span>
+                            </button>
+                            <button onclick="shareViaWhatsApp('${p.id}')" class="flex-1 sm:flex-initial px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors">
+                                <i data-lucide="message-circle" class="w-3.5 h-3.5"></i>
+                                <span>WhatsApp</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function copyParticipantLink(giverId) {
+            const url = buildSecretUrl(giverId);
+            const giver = state.participants.find(p => p.id === giverId);
+
+            // Uso de execCommand como respaldo seguro en iframes
+            const tempInput = document.createElement('input');
+            tempInput.value = url;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy');
+                state.sentLinks.add(giverId);
+                renderWhatsAppLinks();
+                showToast(`Enlace secreto de ${giver.name} copiado al portapapeles.`, 'success');
+            } catch (err) {
+                showToast('No se pudo copiar automáticamente.', 'error');
+            }
+            document.body.removeChild(tempInput);
+        }
+
+        function shareViaWhatsApp(giverId) {
+            const url = buildSecretUrl(giverId);
+            const giver = state.participants.find(p => p.id === giverId);
+            const eventName = state.eventDetails.name ? `*${state.eventDetails.name}*` : 'nuestro intercambio de regalos';
+
+            const message = `¡Hola ${giver.name}! 🎁\nAquí tienes tu enlace secreto para ${eventName}.\nÁbrelo para descubrir a quién te toca regalarle (¡no se lo muestres a nadie!):\n\n${url}`;
+            
+            state.sentLinks.add(giverId);
+            renderWhatsAppLinks();
+
+            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+            window.open(waUrl, '_blank', 'noopener,noreferrer');
+        }
+
+        // --- RENDERIZADO Y LÓGICA MODO PRESENCIAL ---
+        function renderInPersonGrid() {
+            const grid = document.getElementById('inperson-cards-grid');
+            grid.innerHTML = state.participants.map(p => {
+                const seen = state.revealedInPerson.has(p.id);
+                return `
+                    <button onclick="openInPersonTurn('${p.id}')" class="p-4 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                        seen 
+                        ? 'bg-slate-50 border-slate-200 text-slate-500' 
+                        : 'bg-white border-slate-200 hover:border-festive-400 hover:shadow-md text-slate-900'
+                    }">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl ${seen ? 'bg-slate-200 text-slate-500' : 'bg-festive-100 text-festive-600'} font-display font-bold flex items-center justify-center shrink-0">
+                                ${escapeHtml(p.name.charAt(0).toUpperCase())}
+                            </div>
+                            <div class="truncate">
+                                <p class="font-bold text-sm truncate">${escapeHtml(p.name)}</p>
+                                <p class="text-[11px] ${seen ? 'text-emerald-600 font-medium' : 'text-slate-400'}">
+                                    ${seen ? '✓ Ya vio su resultado' : 'Toca para ver tu turno'}
+                                </p>
+                            </div>
+                        </div>
+                        <i data-lucide="${seen ? 'check-circle' : 'chevron-right'}" class="w-4 h-4 shrink-0 ${seen ? 'text-emerald-500' : 'text-slate-400'}"></i>
+                    </button>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        function openInPersonTurn(giverId) {
+            const giver = state.participants.find(p => p.id === giverId);
+            if (!giver) return;
+
+            state.activeInPersonId = giverId;
+            document.getElementById('inperson-giver-title').textContent = giver.name;
+            document.getElementById('inperson-confirm-step').classList.remove('hidden');
+            document.getElementById('inperson-revealed-step').classList.add('hidden');
+            document.getElementById('modal-inperson').classList.remove('hidden');
+        }
+
+        function confirmInPersonReveal() {
+            const giverId = state.activeInPersonId;
+            if (!giverId) return;
+
+            const receiverId = state.assignments[giverId];
+            const receiver = state.participants.find(p => p.id === receiverId);
+
+            document.getElementById('inperson-receiver-title').textContent = receiver.name;
+
+            // Mostrar info del evento si existe
+            const infoBox = document.getElementById('inperson-event-info');
+            const lines = [];
+            if (state.eventDetails.date) lines.push(`<div class="text-slate-800"><strong class="text-slate-950">Fecha:</strong> ${escapeHtml(state.eventDetails.date)}</div>`);
+            if (state.eventDetails.budget) lines.push(`<div class="text-slate-800"><strong class="text-slate-950">Presupuesto:</strong> ${escapeHtml(state.eventDetails.budget)}</div>`);
+            if (state.eventDetails.notes) lines.push(`<div class="text-slate-800"><strong class="text-slate-950">Notas y Reglas:</strong><p class="mt-1 bg-white p-2.5 rounded-lg border border-slate-200 text-slate-800 whitespace-pre-line">${escapeHtml(state.eventDetails.notes)}</p></div>`);
+
+            if (lines.length > 0) {
+                infoBox.innerHTML = lines.join('');
+                infoBox.classList.remove('hidden');
+            } else {
+                infoBox.classList.add('hidden');
+            }
+
+            document.getElementById('inperson-confirm-step').classList.add('hidden');
+            document.getElementById('inperson-revealed-step').classList.remove('hidden');
+            triggerConfetti();
+        }
+
+        function finishInPersonTurn() {
+            if (state.activeInPersonId) {
+                state.revealedInPerson.add(state.activeInPersonId);
+                state.activeInPersonId = null;
+            }
+            closeInPersonModal();
+            renderInPersonGrid();
+        }
+
+        function closeInPersonModal() {
+            document.getElementById('modal-inperson').classList.add('hidden');
+        }
+
+        // --- MANEJO DE VISTA DE ENLACE SECRETO (CUANDO UN INVITADO ABRE EL LINK) ---
+        function checkUrlForSecretLink() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#secreto=')) {
+                const token = hash.replace('#secreto=', '');
+                const data = decodeSecretPayload(token);
+
+                if (data && data.g && data.r) {
+                    renderSecretLinkView(data);
+                    return;
+                } else {
+                    showToast('El enlace secreto parece estar dañado o incompleto.', 'error');
+                }
+            }
+        }
+
+        function renderSecretLinkView(data) {
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-secret-link').classList.remove('hidden');
+            document.getElementById('btn-new-draw').classList.add('hidden');
+
+            document.getElementById('link-event-name').textContent = data.e || 'Intercambio de Regalos';
+            document.getElementById('link-giver-name').textContent = data.g;
+            document.getElementById('link-receiver-name').textContent = data.r;
+
+            // Configurar detalles opcionales
+            let hasDetails = false;
+            if (data.d) {
+                document.getElementById('link-date-val').textContent = data.d;
+                document.getElementById('link-detail-date').classList.remove('hidden');
+                hasDetails = true;
+            }
+            if (data.b) {
+                document.getElementById('link-budget-val').textContent = data.b;
+                document.getElementById('link-detail-budget').classList.remove('hidden');
+                hasDetails = true;
+            }
+            if (data.n) {
+                document.getElementById('link-notes-val').textContent = data.n;
+                document.getElementById('link-detail-notes').classList.remove('hidden');
+                hasDetails = true;
+            }
+
+            if (!hasDetails) {
+                document.getElementById('link-event-details-box').classList.add('hidden');
+            } else {
+                document.getElementById('link-event-details-box').classList.remove('hidden');
+            }
+
+            // Asegurar estado inicial oculto
+            document.getElementById('link-step-confirm').classList.remove('hidden');
+            document.getElementById('link-step-revealed').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function revealSecretLinkResult() {
+            document.getElementById('link-step-confirm').classList.add('hidden');
+            document.getElementById('link-step-revealed').classList.remove('hidden');
+            triggerConfetti();
+        }
+
+        function startOwnDrawFromLink() {
+            // Limpiar hash sin recargar la página
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+            document.getElementById('view-secret-link').classList.add('hidden');
+            document.getElementById('view-setup').classList.remove('hidden');
+        }
+
+        // --- REINICIO Y CONFIRMACIONES ---
+        function openConfirmModal(title, desc, onConfirm) {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-desc').textContent = desc;
+            const btn = document.getElementById('confirm-modal-btn');
+            btn.onclick = () => {
+                closeConfirmModal();
+                onConfirm();
+            };
+            document.getElementById('modal-confirm').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+        }
+
+        function confirmResetApp() {
+            openConfirmModal(
+                '¿Iniciar un nuevo sorteo?',
+                'Se borrarán los participantes, reglas y resultados actuales.',
+                () => {
+                    state = {
+                        participants: [],
+                        exclusions: [],
+                        eventDetails: { name: '', date: '', budget: '', notes: '' },
+                        assignments: null,
+                        revealedInPerson: new Set(),
+                        sentLinks: new Set(),
+                        activeInPersonId: null
+                    };
+                    document.getElementById('event-name').value = '';
+                    document.getElementById('event-date').value = '';
+                    document.getElementById('event-budget').value = '';
+                    document.getElementById('event-notes').value = '';
+                    document.getElementById('draw-error-box').classList.add('hidden');
+                    
+                    renderParticipants();
+                    updateExclusionsUI();
+
+                    document.getElementById('view-results').classList.add('hidden');
+                    document.getElementById('btn-new-draw').classList.add('hidden');
+                    document.getElementById('view-setup').classList.remove('hidden');
+                    showToast('Listo para un nuevo intercambio.', 'info');
+                }
+            );
+        }
+
+        function resetToHomeConfirm() {
+            if (!document.getElementById('view-secret-link').classList.contains('hidden')) {
+                startOwnDrawFromLink();
+            } else if (!document.getElementById('view-results').classList.contains('hidden')) {
+                backToSetup();
+            }
+        }
+    </script>
+</body>
+</html>
