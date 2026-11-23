@@ -228,7 +228,7 @@
         <!-- ========================================================= -->
         <!-- VISTA 2: CONFIGURACIÓN DEL SORTEO (ORGANIZADOR)           -->
         <!-- ========================================================= -->
-        <section id="view-setup" class="space-y-6 fade-in">
+        <section id="view-setup" class="hidden space-y-6 fade-in">
             
             <!-- Banner Introductorio -->
             <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
@@ -631,14 +631,15 @@
             const hash = window.location.hash;
             // 1. Si hay un enlace secreto en la URL, mostrarlo directamente sin pedir PIN
             if (hash && hash.startsWith('#secreto=')) {
-                state.lastSecretHash = hash;
-                const token = hash.replace('#secreto=', '');
+                const token = hash.slice('#secreto='.length);
                 const data = decodeSecretPayload(token);
 
-                if (data && data.g && data.r) {
+                if (data) {
+                    state.lastSecretHash = hash;
                     renderSecretLinkView(data);
                     return;
                 } else {
+                    state.lastSecretHash = null;
                     showToast('El enlace secreto parece estar dañado o incompleto.', 'error');
                 }
             }
@@ -700,6 +701,11 @@
         }
 
         function showUnlockedOrganizerView() {
+            if (!isOrganizerUnlocked()) {
+                showPinLockView(false);
+                return;
+            }
+
             document.getElementById('view-pin-lock').classList.add('hidden');
             document.getElementById('view-secret-link').classList.add('hidden');
             document.getElementById('btn-lock-organizer').classList.remove('hidden');
@@ -1199,6 +1205,11 @@
         }
 
         function backToSetup() {
+            if (!isOrganizerUnlocked()) {
+                showPinLockView(false);
+                return;
+            }
+
             document.getElementById('view-results').classList.add('hidden');
             document.getElementById('view-setup').classList.remove('hidden');
         }
@@ -1241,16 +1252,46 @@
         }
 
         function decodeSecretPayload(encoded) {
+            if (typeof encoded !== 'string' || !encoded) return null;
+
+            const candidates = [encoded];
             try {
-                let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
-                while (base64.length % 4) base64 += '=';
-                const binString = atob(base64);
-                const bytes = Uint8Array.from(binString, char => char.charCodeAt(0));
-                const jsonStr = new TextDecoder().decode(bytes);
-                return JSON.parse(jsonStr);
+                const decodedToken = decodeURIComponent(encoded);
+                if (decodedToken !== encoded) candidates.push(decodedToken);
             } catch (e) {
-                return null;
+                // Intentar también el token original si el fragmento tiene escapes incompletos.
             }
+
+            for (const candidate of candidates) {
+                try {
+                    let base64 = candidate.replace(/-/g, '+').replace(/_/g, '/');
+                    if (base64.length % 4 === 1) continue;
+                    while (base64.length % 4) base64 += '=';
+
+                    const binString = atob(base64);
+                    const bytes = Uint8Array.from(binString, char => char.charCodeAt(0));
+                    const payload = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+                    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) continue;
+
+                    const giverName = typeof payload.g === 'string' ? payload.g : payload.giver;
+                    const receiverName = typeof payload.r === 'string' ? payload.r : payload.receiver;
+                    if (typeof giverName !== 'string' || !giverName.trim() ||
+                        typeof receiverName !== 'string' || !receiverName.trim()) continue;
+
+                    return {
+                        g: giverName,
+                        r: receiverName,
+                        e: typeof payload.e === 'string' ? payload.e : '',
+                        d: typeof payload.d === 'string' ? payload.d : '',
+                        b: typeof payload.b === 'string' ? payload.b : '',
+                        n: typeof payload.n === 'string' ? payload.n : ''
+                    };
+                } catch (e) {
+                    // Probar la siguiente representación posible del token.
+                }
+            }
+
+            return null;
         }
 
         function buildSecretUrl(giverId) {
@@ -1427,7 +1468,34 @@
             document.getElementById('btn-lock-organizer').classList.add('hidden');
 
             document.getElementById('link-event-name').textContent = data.e || 'Intercambio de Regalos';
-// ... existing code ... -->
+            document.getElementById('link-giver-name').textContent = data.g;
+            document.getElementById('link-receiver-name').textContent = data.r;
+
+            let hasDetails = false;
+            const detailFields = [
+                { key: 'd', valueId: 'link-date-val', containerId: 'link-detail-date' },
+                { key: 'b', valueId: 'link-budget-val', containerId: 'link-detail-budget' },
+                { key: 'n', valueId: 'link-notes-val', containerId: 'link-detail-notes' }
+            ];
+            detailFields.forEach(({ key, valueId, containerId }) => {
+                const hasValue = Boolean(data[key]);
+                document.getElementById(valueId).textContent = hasValue ? data[key] : '';
+                document.getElementById(containerId).classList.toggle('hidden', !hasValue);
+                hasDetails = hasDetails || hasValue;
+            });
+            document.getElementById('link-event-details-box').classList.toggle('hidden', !hasDetails);
+
+            document.getElementById('link-step-confirm').classList.remove('hidden');
+            document.getElementById('link-step-revealed').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function revealSecretLinkResult() {
+            document.getElementById('link-step-confirm').classList.add('hidden');
+            document.getElementById('link-step-revealed').classList.remove('hidden');
+            triggerConfetti();
+        }
+
         function startOwnDrawFromLink() {
             // Guardar el hash actual por si el usuario decide volver a su enlace secreto sin ingresar PIN
             if (window.location.hash && window.location.hash.startsWith('#secreto=')) {
@@ -1484,7 +1552,11 @@
 
                     document.getElementById('view-results').classList.add('hidden');
                     document.getElementById('btn-new-draw').classList.add('hidden');
-                    document.getElementById('view-setup').classList.remove('hidden');
+                    if (isOrganizerUnlocked()) {
+                        document.getElementById('view-setup').classList.remove('hidden');
+                    } else {
+                        showPinLockView(false);
+                    }
                     showToast('Listo para un nuevo intercambio.', 'info');
                 }
             );
