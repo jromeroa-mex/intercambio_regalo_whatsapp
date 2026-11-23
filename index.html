@@ -100,6 +100,10 @@
             </div>
             
             <div id="header-actions" class="flex items-center gap-2">
+                <button id="btn-lock-organizer" onclick="lockOrganizerSession()" class="hidden text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5" title="Bloquear acceso de organizador">
+                    <i data-lucide="lock" class="w-4 h-4"></i>
+                    <span>Bloquear</span>
+                </button>
                 <button id="btn-new-draw" onclick="confirmResetApp()" class="hidden text-xs sm:text-sm font-medium text-slate-600 hover:text-festive-600 bg-slate-100 hover:bg-festive-50 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5">
                     <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                     <span>Nuevo Sorteo</span>
@@ -110,6 +114,45 @@
 
     <!-- Contenido Principal -->
     <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+        <!-- ========================================================= -->
+        <!-- VISTA 0: ACCESO DE ORGANIZADOR (BLOQUEO CON PIN)          -->
+        <!-- ========================================================= -->
+        <section id="view-pin-lock" class="hidden fade-in max-w-md mx-auto">
+            <div class="glass-card rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+                <div class="bg-slate-900 px-6 py-8 text-center text-white">
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/10 mb-3 border border-white/15">
+                        <i data-lucide="shield-lock" class="w-7 h-7 text-gold-400"></i>
+                    </div>
+                    <h2 class="font-display font-extrabold text-2xl tracking-tight">Acceso de Organizador</h2>
+                    <p class="text-slate-300 text-xs sm:text-sm mt-1.5">Ingresa el PIN de 4 dígitos para crear o administrar sorteos.</p>
+                </div>
+
+                <form onsubmit="handlePinSubmit(event)" class="p-6 sm:p-8 space-y-5">
+                    <div>
+                        <label for="input-organizer-pin" class="block text-xs font-bold uppercase tracking-wider text-slate-600 text-center mb-2">PIN de Seguridad</label>
+                        <input type="password" id="input-organizer-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off"
+                            class="w-full text-center font-display font-extrabold text-3xl tracking-[0.6em] py-3.5 px-4 rounded-2xl border-2 border-slate-300 focus:border-festive-500 focus:ring-4 focus:ring-festive-500/15 outline-none text-slate-900 bg-slate-50 focus:bg-white transition-all">
+                        <p id="pin-error-msg" class="hidden text-center text-xs font-semibold text-red-600 mt-2.5 flex items-center justify-center gap-1">
+                            <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                            <span>PIN incorrecto. Intenta de nuevo.</span>
+                        </p>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-display font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="unlock" class="w-4 h-4"></i>
+                        <span>Desbloquear Panel</span>
+                    </button>
+
+                    <div id="pin-return-secret-box" class="hidden pt-2 border-t border-slate-100 text-center">
+                        <button type="button" onclick="returnToSecretLinkFromPin()" class="text-xs font-semibold text-festive-600 hover:text-festive-700 inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg hover:bg-festive-50 transition-colors">
+                            <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                            <span>Volver a mi enlace secreto</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
 
         <!-- ========================================================= -->
         <!-- VISTA 1: REVELACIÓN INDIVIDUAL (CUANDO SE ABRE UN ENLACE) -->
@@ -172,9 +215,9 @@
                         </div>
 
                         <div class="pt-2 text-center">
-                            <button onclick="startOwnDrawFromLink()" class="text-sm font-semibold text-festive-600 hover:text-festive-700 inline-flex items-center gap-1.5 py-2 px-4 rounded-xl hover:bg-festive-50 transition-colors">
-                                <i data-lucide="plus-circle" class="w-4 h-4"></i>
-                                <span>Organizar mi propio sorteo</span>
+                            <button onclick="startOwnDrawFromLink()" class="text-sm font-semibold text-slate-600 hover:text-festive-700 inline-flex items-center gap-1.5 py-2 px-4 rounded-xl bg-slate-100 hover:bg-festive-50 border border-slate-200 transition-colors">
+                                <i data-lucide="lock" class="w-4 h-4 text-slate-500"></i>
+                                <span>Modo Organizador</span>
                             </button>
                         </div>
                     </div>
@@ -530,6 +573,13 @@
     <!-- LÓGICA DE LA APLICACIÓN                                   -->
     <!-- ========================================================= -->
     <script>
+        // =========================================================
+        // CONFIGURACIÓN DEL PIN DE ORGANIZADOR
+        // Cambia '3598' por el código numérico de 4 dígitos que prefieras.
+        // =========================================================
+        const ORGANIZER_PIN = '3598';
+        const PIN_SESSION_KEY = 'amigo_secreto_org_unlocked';
+
         // --- ESTADO GLOBAL DE LA APLICACIÓN ---
         let state = {
             participants: [], // Array de objetos: { id: string, name: string }
@@ -543,17 +593,139 @@
             assignments: null, // Mapa/Objeto: { [giverId]: receiverId }
             revealedInPerson: new Set(), // IDs de participantes que ya vieron su resultado en modo presencial
             sentLinks: new Set(),        // IDs de participantes cuyo enlace ya fue copiado/enviado
-            activeInPersonId: null
+            activeInPersonId: null,
+            lastSecretHash: null         // Guarda el hash activo si el invitado intenta abrir el modo organizador
         };
 
         // --- INICIALIZACIÓN ---
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            checkUrlForSecretLink();
+            routeInitialView();
             
             // Escuchar cambios en el hash por si el usuario navega
-            window.addEventListener('hashchange', checkUrlForSecretLink);
+            window.addEventListener('hashchange', routeInitialView);
         });
+
+        // --- CONTROL DE ACCESO Y RUTEO POR PIN ---
+        function isOrganizerUnlocked() {
+            try {
+                return sessionStorage.getItem(PIN_SESSION_KEY) === 'true';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setOrganizerUnlocked(unlocked) {
+            try {
+                if (unlocked) {
+                    sessionStorage.setItem(PIN_SESSION_KEY, 'true');
+                } else {
+                    sessionStorage.removeItem(PIN_SESSION_KEY);
+                }
+            } catch (e) {
+                // Ignorar si sessionStorage está restringido
+            }
+        }
+
+        function routeInitialView() {
+            const hash = window.location.hash;
+            // 1. Si hay un enlace secreto en la URL, mostrarlo directamente sin pedir PIN
+            if (hash && hash.startsWith('#secreto=')) {
+                state.lastSecretHash = hash;
+                const token = hash.replace('#secreto=', '');
+                const data = decodeSecretPayload(token);
+
+                if (data && data.g && data.r) {
+                    renderSecretLinkView(data);
+                    return;
+                } else {
+                    showToast('El enlace secreto parece estar dañado o incompleto.', 'error');
+                }
+            }
+
+            // 2. Si no hay enlace secreto, verificar si el organizador ya ingresó el PIN
+            if (!isOrganizerUnlocked()) {
+                showPinLockView(Boolean(state.lastSecretHash));
+                return;
+            }
+
+            // 3. Organizador desbloqueado: mostrar panel activo
+            showUnlockedOrganizerView();
+        }
+
+        function showPinLockView(canReturnToSecret = false) {
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-results').classList.add('hidden');
+            document.getElementById('view-secret-link').classList.add('hidden');
+            document.getElementById('btn-new-draw').classList.add('hidden');
+            document.getElementById('btn-lock-organizer').classList.add('hidden');
+
+            document.getElementById('view-pin-lock').classList.remove('hidden');
+            document.getElementById('pin-error-msg').classList.add('hidden');
+            
+            const returnBox = document.getElementById('pin-return-secret-box');
+            if (canReturnToSecret) {
+                returnBox.classList.remove('hidden');
+            } else {
+                returnBox.classList.add('hidden');
+            }
+
+            const pinInput = document.getElementById('input-organizer-pin');
+            pinInput.value = '';
+            lucide.createIcons();
+            setTimeout(() => pinInput.focus(), 100);
+        }
+
+        function handlePinSubmit(e) {
+            e.preventDefault();
+            const pinInput = document.getElementById('input-organizer-pin');
+            const errorMsg = document.getElementById('pin-error-msg');
+            const entered = pinInput.value.trim();
+
+            if (entered === ORGANIZER_PIN) {
+                setOrganizerUnlocked(true);
+                errorMsg.classList.add('hidden');
+                // Limpiar hash si venía desde un enlace secreto
+                if (window.location.hash) {
+                    history.pushState("", document.title, window.location.pathname + window.location.search);
+                }
+                state.lastSecretHash = null;
+                showUnlockedOrganizerView();
+                showToast('Panel de organizador desbloqueado.', 'success');
+            } else {
+                errorMsg.classList.remove('hidden');
+                pinInput.value = '';
+                pinInput.focus();
+            }
+        }
+
+        function showUnlockedOrganizerView() {
+            document.getElementById('view-pin-lock').classList.add('hidden');
+            document.getElementById('view-secret-link').classList.add('hidden');
+            document.getElementById('btn-lock-organizer').classList.remove('hidden');
+
+            if (state.assignments) {
+                showResultsView();
+            } else {
+                document.getElementById('view-results').classList.add('hidden');
+                document.getElementById('btn-new-draw').classList.add('hidden');
+                document.getElementById('view-setup').classList.remove('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function lockOrganizerSession() {
+            setOrganizerUnlocked(false);
+            showPinLockView(false);
+            showToast('Sesión de organizador bloqueada.', 'info');
+        }
+
+        function returnToSecretLinkFromPin() {
+            if (state.lastSecretHash) {
+                window.location.hash = state.lastSecretHash;
+                routeInitialView();
+            }
+        }
 
         // --- UTILIDADES UI (TOASTS Y MODALES) ---
         function showToast(message, type = 'info') {
@@ -1246,72 +1418,29 @@
         }
 
         // --- MANEJO DE VISTA DE ENLACE SECRETO (CUANDO UN INVITADO ABRE EL LINK) ---
-        function checkUrlForSecretLink() {
-            const hash = window.location.hash;
-            if (hash && hash.startsWith('#secreto=')) {
-                const token = hash.replace('#secreto=', '');
-                const data = decodeSecretPayload(token);
-
-                if (data && data.g && data.r) {
-                    renderSecretLinkView(data);
-                    return;
-                } else {
-                    showToast('El enlace secreto parece estar dañado o incompleto.', 'error');
-                }
-            }
-        }
-
         function renderSecretLinkView(data) {
+            document.getElementById('view-pin-lock').classList.add('hidden');
             document.getElementById('view-setup').classList.add('hidden');
             document.getElementById('view-results').classList.add('hidden');
             document.getElementById('view-secret-link').classList.remove('hidden');
             document.getElementById('btn-new-draw').classList.add('hidden');
+            document.getElementById('btn-lock-organizer').classList.add('hidden');
 
             document.getElementById('link-event-name').textContent = data.e || 'Intercambio de Regalos';
-            document.getElementById('link-giver-name').textContent = data.g;
-            document.getElementById('link-receiver-name').textContent = data.r;
-
-            // Configurar detalles opcionales
-            let hasDetails = false;
-            if (data.d) {
-                document.getElementById('link-date-val').textContent = data.d;
-                document.getElementById('link-detail-date').classList.remove('hidden');
-                hasDetails = true;
-            }
-            if (data.b) {
-                document.getElementById('link-budget-val').textContent = data.b;
-                document.getElementById('link-detail-budget').classList.remove('hidden');
-                hasDetails = true;
-            }
-            if (data.n) {
-                document.getElementById('link-notes-val').textContent = data.n;
-                document.getElementById('link-detail-notes').classList.remove('hidden');
-                hasDetails = true;
-            }
-
-            if (!hasDetails) {
-                document.getElementById('link-event-details-box').classList.add('hidden');
-            } else {
-                document.getElementById('link-event-details-box').classList.remove('hidden');
-            }
-
-            // Asegurar estado inicial oculto
-            document.getElementById('link-step-confirm').classList.remove('hidden');
-            document.getElementById('link-step-revealed').classList.add('hidden');
-            lucide.createIcons();
-        }
-
-        function revealSecretLinkResult() {
-            document.getElementById('link-step-confirm').classList.add('hidden');
-            document.getElementById('link-step-revealed').classList.remove('hidden');
-            triggerConfetti();
-        }
-
+// ... existing code ... -->
         function startOwnDrawFromLink() {
-            // Limpiar hash sin recargar la página
+            // Guardar el hash actual por si el usuario decide volver a su enlace secreto sin ingresar PIN
+            if (window.location.hash && window.location.hash.startsWith('#secreto=')) {
+                state.lastSecretHash = window.location.hash;
+            }
             history.pushState("", document.title, window.location.pathname + window.location.search);
             document.getElementById('view-secret-link').classList.add('hidden');
-            document.getElementById('view-setup').classList.remove('hidden');
+
+            if (isOrganizerUnlocked()) {
+                showUnlockedOrganizerView();
+            } else {
+                showPinLockView(Boolean(state.lastSecretHash));
+            }
         }
 
         // --- REINICIO Y CONFIRMACIONES ---
@@ -1364,8 +1493,14 @@
         function resetToHomeConfirm() {
             if (!document.getElementById('view-secret-link').classList.contains('hidden')) {
                 startOwnDrawFromLink();
+            } else if (!document.getElementById('view-pin-lock').classList.contains('hidden')) {
+                if (state.lastSecretHash) returnToSecretLinkFromPin();
             } else if (!document.getElementById('view-results').classList.contains('hidden')) {
-                backToSetup();
+                if (isOrganizerUnlocked()) {
+                    backToSetup();
+                } else {
+                    showPinLockView(false);
+                }
             }
         }
     </script>
